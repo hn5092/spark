@@ -193,8 +193,8 @@ private[yarn] class AMCredentialRenewer(
     } else {
       // Next valid renewal time is about 75% of credential renewal time, and update time is
       // slightly later than valid renewal time (80% of renewal time).
-      timeOfNextRenewal = ((nearestNextRenewalTime - currTime) * 0.75 + currTime).toLong
-      ((nearestNextRenewalTime - currTime) * 0.8 + currTime).toLong
+      timeOfNextRenewal = ((nearestNextRenewalTime - currTime) * 0.2 + currTime).toLong
+      ((nearestNextRenewalTime - currTime) * 0.3 + currTime).toLong
     }
 
     // Add the temp credentials back to the original ones.

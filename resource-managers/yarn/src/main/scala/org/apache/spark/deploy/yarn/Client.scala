@@ -405,8 +405,8 @@ private[spark] class Client(
       // slightly later then renewal time (80% of next renewal time). This is to make sure
       // credentials are renewed and updated before expired.
       val currTime = System.currentTimeMillis()
-      val renewalTime = (nearestTimeOfNextRenewal - currTime) * 0.75 + currTime
-      val updateTime = (nearestTimeOfNextRenewal - currTime) * 0.8 + currTime
+      val renewalTime = (nearestTimeOfNextRenewal - currTime) * 0.2 + currTime
+      val updateTime = (nearestTimeOfNextRenewal - currTime) * 0.3 + currTime
 
       sparkConf.set(CREDENTIALS_RENEWAL_TIME, renewalTime.toLong)
       sparkConf.set(CREDENTIALS_UPDATE_TIME, updateTime.toLong)
