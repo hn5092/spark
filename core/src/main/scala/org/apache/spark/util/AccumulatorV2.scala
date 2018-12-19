@@ -225,7 +225,26 @@ private[spark] object AccumulatorContext extends Logging {
   private val originals = new ConcurrentHashMap[Long, jl.ref.WeakReference[AccumulatorV2[_, _]]]
 
   private[this] val nextId = new AtomicLong(0L)
+  private[this] val count = new AtomicLong(0L)
 
+//  new Thread(new Runnable {
+//    override def run(): Unit = {
+//      import scala.collection.JavaConverters._
+//      while (true) {
+//        logError("Started accumulator cleaner.")
+//        Thread.sleep(10 * 1000L)
+//        logError(s"Current accumulator ${count.get()}")
+//        if (count.get() > 50000) {
+//          val start = System.currentTimeMillis()
+//          val longs = originals.keys().asScala.filter(_ < (nextId.get() - 40000))
+//          longs.foreach(originals.remove)
+//          count.addAndGet(-longs.size)
+//          logError(s"Clean ${longs.size} accumulator ,
+//   take ${System.currentTimeMillis() - start}")
+//        }
+//      }
+//    }
+//  }).start()
   /**
    * Returns a globally unique ID for a new [[AccumulatorV2]].
    * Note: Once you copy the [[AccumulatorV2]] the ID is no longer unique.

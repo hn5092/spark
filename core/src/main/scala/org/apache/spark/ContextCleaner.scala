@@ -19,7 +19,7 @@ package org.apache.spark
 
 import java.lang.ref.{ReferenceQueue, WeakReference}
 import java.util.Collections
-import java.util.concurrent.{ConcurrentHashMap, ConcurrentLinkedQueue, ScheduledExecutorService, TimeUnit}
+import java.util.concurrent.{ConcurrentHashMap, ConcurrentLinkedQueue, Executors, ExecutorService, ScheduledExecutorService, TimeUnit}
 
 import scala.collection.JavaConverters._
 
@@ -27,6 +27,7 @@ import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.internal.Logging
 import org.apache.spark.rdd.{RDD, ReliableRDDCheckpointData}
 import org.apache.spark.util.{AccumulatorContext, AccumulatorV2, ThreadUtils, Utils}
+
 
 /**
  * Classes that represent cleaning tasks.
@@ -112,6 +113,7 @@ private[spark] class ContextCleaner(sc: SparkContext) extends Logging {
   private val blockOnShuffleCleanupTasks = sc.conf.getBoolean(
     "spark.cleaner.referenceTracking.blocking.shuffle", false)
 
+
   @volatile private var stopped = false
 
   /** Attach a listener object to get information of when objects are cleaned. */
@@ -177,33 +179,39 @@ private[spark] class ContextCleaner(sc: SparkContext) extends Logging {
   /** Keep cleaning RDD, shuffle, and broadcast state. */
   private def keepCleaning(): Unit = Utils.tryOrStopSparkContext(sc) {
     while (!stopped) {
-      try {
-        val reference = Option(referenceQueue.remove(ContextCleaner.REF_QUEUE_POLL_TIMEOUT))
-          .map(_.asInstanceOf[CleanupTaskWeakReference])
-        // Synchronize here to avoid being interrupted on stop()
-        synchronized {
-          reference.foreach { ref =>
-            logDebug("Got cleaning task " + ref.task)
-            referenceBuffer.remove(ref)
-            ref.task match {
-              case CleanRDD(rddId) =>
-                doCleanupRDD(rddId, blocking = blockOnCleanupTasks)
-              case CleanShuffle(shuffleId) =>
-                doCleanupShuffle(shuffleId, blocking = blockOnShuffleCleanupTasks)
-              case CleanBroadcast(broadcastId) =>
-                doCleanupBroadcast(broadcastId, blocking = blockOnCleanupTasks)
-              case CleanAccum(accId) =>
-                doCleanupAccum(accId, blocking = blockOnCleanupTasks)
-              case CleanCheckpoint(rddId) =>
-                doCleanCheckpoint(rddId)
-            }
-          }
-        }
-      } catch {
-        case ie: InterruptedException if stopped => // ignore
-        case e: Exception => logError("Error in cleaning thread", e)
+      Option(referenceQueue.remove(ContextCleaner.REF_QUEUE_POLL_TIMEOUT))
+        .map(_.asInstanceOf[CleanupTaskWeakReference]).foreach {
+        r =>
+          referenceBuffer.remove(r)
+          submitTask(r)
       }
     }
+  }
+
+  private val service: ExecutorService = Executors.newFixedThreadPool(100)
+
+  private def submitTask(ref: CleanupTaskWeakReference) = {
+    service.submit(new Runnable {
+      override def run(): Unit = {
+        try {
+          ref.task match {
+            case CleanRDD(rddId) =>
+              doCleanupRDD(rddId, blocking = blockOnCleanupTasks)
+            case CleanShuffle(shuffleId) =>
+              doCleanupShuffle(shuffleId, blocking = blockOnShuffleCleanupTasks)
+            case CleanBroadcast(broadcastId) =>
+              doCleanupBroadcast(broadcastId, blocking = blockOnCleanupTasks)
+            case CleanAccum(accId) =>
+              doCleanupAccum(accId, blocking = blockOnCleanupTasks)
+            case CleanCheckpoint(rddId) =>
+              doCleanCheckpoint(rddId)
+          }
+        } catch {
+          case ie: InterruptedException if stopped => // ignore
+          case e: Exception => logError("Error in cleaning thread", e)
+        }
+      }
+    })
   }
 
   /** Perform RDD cleanup. */

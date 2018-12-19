@@ -91,6 +91,8 @@ private[spark] class MemoryStore(
 
   private val entries = new LinkedHashMap[BlockId, MemoryEntry[_]](32, 0.75f, true)
 
+
+  private[spark] def getEntry : java.util.Set[BlockId] = entries.keySet()
   // A mapping from taskAttemptId to amount of memory used for unrolling a block (in bytes)
   // All accesses of this map are assumed to have manually synchronized on `memoryManager`
   private val onHeapUnrollMemoryMap = mutable.HashMap[Long, Long]()

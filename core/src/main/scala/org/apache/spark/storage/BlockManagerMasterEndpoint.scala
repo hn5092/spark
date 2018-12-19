@@ -202,7 +202,15 @@ class BlockManagerMasterEndpoint(
           0 // zero blocks were removed
       }
     }.toSeq
-
+   val blocksToRemove = blockLocations.keySet().asScala
+     .collect {
+       case broadcastId@BroadcastBlockId(`broadcastId`, _) =>
+         broadcastId
+     }
+    blocksToRemove.foreach{block =>
+      blockLocations.remove(block)
+      blockManagerInfo.values.foreach(_.removeBlock(block))
+    }
     Future.sequence(futures)
   }
 

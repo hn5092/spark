@@ -63,7 +63,7 @@ class BlockManagerSlaveEndpoint(
 
     case RemoveBroadcast(broadcastId, _) =>
       doAsync[Int]("removing broadcast " + broadcastId, context) {
-        blockManager.removeBroadcast(broadcastId, tellMaster = true)
+        blockManager.removeBroadcast(broadcastId, tellMaster = false)
       }
 
     case GetBlockStatus(blockId, _) =>
