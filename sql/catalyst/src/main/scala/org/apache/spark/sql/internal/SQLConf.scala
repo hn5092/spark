@@ -1993,6 +1993,9 @@ class SQLConf extends Serializable with Logging {
       getOrElse(throw new NoSuchElementException(key))
   }
 
+  def setLocalProp(key: String, value: String): Unit = {
+      reader.localProperties.get().put(key, value)
+  }
   /**
    * Return the value of Spark SQL configuration property for the given key. If the key is not set
    * yet, return `defaultValue`. This is useful when `defaultValue` in ConfigEntry is not the
@@ -2047,8 +2050,13 @@ class SQLConf extends Serializable with Logging {
    * Return all the configuration properties that have been set (i.e. not the default).
    * This creates a new copy of the config properties in the form of a Map.
    */
-  def getAllConfs: immutable.Map[String, String] =
-    settings.synchronized { settings.asScala.toMap }
+  def getAllConfs: immutable.Map[String, String] = {
+    settings.synchronized {
+      var map = settings.asScala.toMap
+      reader.localProperties.get().asScala.foreach(entry => map += (entry._1 -> entry._2))
+      map
+    }
+  }
 
   /**
    * Return all the configuration definitions that have been defined in [[SQLConf]]. Each
