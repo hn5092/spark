@@ -41,8 +41,17 @@ import org.apache.spark.sql.catalyst.util.StringUtils
 import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.types.{StructField, StructType}
 
-object SessionCatalog {
-  val DEFAULT_DATABASE = "default"
+object SessionCatalog extends Logging {
+  val DEFAULT_DATABASE = {
+    if (System.getenv("DEFAULT_DATABASE") == null) {
+      logInfo(s"Set default database to default")
+      "default"
+    } else {
+      val defaultdatabase = System.getenv("DEFAULT_DATABASE")
+      logInfo(s"Set default database to $defaultdatabase")
+      defaultdatabase
+    }
+  }
 }
 
 /**
